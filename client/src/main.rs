@@ -11,12 +11,12 @@ fn main() {
 
     socket
         .send_to(
-            socket.local_addr().unwrap().port().to_string().as_bytes(),
+            "Discovery message".as_bytes(),
             multicast_addr,
         )
         .unwrap();
 
-    let (response_size, _) = socket.recv_from(&mut buf).unwrap();
+    let response_size = socket.recv(&mut buf).unwrap();
     let response = std::str::from_utf8(&buf[..response_size]).unwrap();
     println!("Server addr: {}", response);
 }

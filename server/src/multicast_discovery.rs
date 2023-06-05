@@ -1,6 +1,9 @@
 use async_std::net::UdpSocket;
 use async_std::task;
-use std::net::{Ipv4Addr, SocketAddrV4};
+use std::{
+    io,
+    net::{Ipv4Addr, SocketAddr, SocketAddrV4},
+};
 
 pub fn start_multicast_discovery(multicast_addr: SocketAddrV4, response_addr: String) {
     task::spawn(async move {
@@ -16,23 +19,16 @@ pub fn start_multicast_discovery(multicast_addr: SocketAddrV4, response_addr: St
             .unwrap();
 
         loop {
-            let msg = receive_multicast(&socket).await;
-            if let Ok(msg) = msg {
-                println!("Received discovery message");
-                let _ = socket
-                    .send_to(
-                        response_addr.as_bytes(),
-                        multicast_addr.ip().to_string() + ":" + &msg,
-                    )
-                    .await;
+            if let Ok(peer) = receive_multicast(&socket).await {
+                println!("Received discovery message from {:?}", peer);
+                let _ = socket.send_to(response_addr.as_bytes(), peer).await;
             }
         }
     });
 }
 
-pub async fn receive_multicast(socket: &UdpSocket) -> anyhow::Result<String> {
+pub async fn receive_multicast(socket: &UdpSocket) -> io::Result<SocketAddr> {
     let mut buf = [0; 100];
-    let message_size = socket.recv(&mut buf).await?;
-    let message = std::str::from_utf8(&buf[..message_size])?.to_owned();
-    Ok(message)
+    let (_message_size, peer) = socket.recv_from(&mut buf).await?;
+    Ok(peer)
 }
