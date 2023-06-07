@@ -1,10 +1,10 @@
-use crate::game::{Board, FieldState};
+use crate::{game::{Board, FieldState}, CONNECTIONS_COUNT};
 use async_std::io::ReadExt;
 use async_std::net::TcpStream;
 use async_std::task;
 use byteorder::{BigEndian, ReadBytesExt};
 use shared::{ClientBoard, ClientToServer};
-use std::io::Cursor;
+use std::{io::Cursor, sync::atomic::Ordering};
 
 enum ClientState {
     Connected,
@@ -15,6 +15,7 @@ enum ClientState {
 pub fn handle_client(mut stream: TcpStream) {
     task::spawn(async move {
         println!("Client connected");
+        CONNECTIONS_COUNT.fetch_add(1, Ordering::SeqCst);
         let state = ClientState::Connected;
 
         let mut length_buf = [0; 4];
@@ -46,6 +47,7 @@ pub fn handle_client(mut stream: TcpStream) {
             }
         }
         println!("Client disconnected");
+        CONNECTIONS_COUNT.fetch_sub(1, Ordering::SeqCst);
     });
 }
 
