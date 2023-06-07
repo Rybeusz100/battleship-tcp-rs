@@ -1,5 +1,8 @@
 use lazy_static::lazy_static;
 use std::collections::HashMap;
+use uuid::Uuid;
+
+pub const INITIAL_SHIPS_COUNT: u8 = 7;
 
 lazy_static! {
     static ref REQUIRED_SHIPS: HashMap<u8, u8> = {
@@ -25,11 +28,15 @@ pub enum FieldState {
 }
 
 pub struct Player {
-    board: Board,
-    alive_ships: u8,
+    pub id: Uuid,
+    pub board: Board,
+    pub alive_ships: u8,
 }
 
 pub struct Game {
-    pub player_1: Option<Player>,
-    pub player_2: Option<Player>,
+    pub id: Uuid,
+    pub player_1: Player,
+    pub player_2: Player,
 }
+
+pub fn start_game() {}

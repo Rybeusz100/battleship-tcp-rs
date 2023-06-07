@@ -2,11 +2,13 @@ use crate::session::handle_client;
 use async_std::prelude::*;
 use async_std::{net::TcpListener, task};
 use dotenv::dotenv;
+use manager::start_manager;
 use multicast_discovery::start_multicast_discovery;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::{env, io, net::SocketAddrV4};
 
 mod game;
+mod manager;
 mod multicast_discovery;
 mod session;
 
@@ -33,9 +35,11 @@ async fn run_server() -> io::Result<()> {
         tcp_listener.local_addr().unwrap().to_string(),
     );
 
+    let manager_tx = start_manager();
+
     while let Some(Ok(stream)) = tcp_listener.incoming().next().await {
         if CONNECTIONS_COUNT.load(Ordering::SeqCst) < max_connections {
-            handle_client(stream);
+            handle_client(stream, manager_tx.clone());
         } else {
             println!("Connection limit reached");
         }
