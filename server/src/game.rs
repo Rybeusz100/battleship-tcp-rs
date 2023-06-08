@@ -9,7 +9,7 @@ pub const REQUIRED_SHIPS: [u8; 11] = [0, 2, 2, 1, 1, 1, 0, 0, 0, 0, 0];
 
 pub type Board = [[FieldState; 10]; 10];
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum FieldState {
     Free,
     Occupied,
@@ -86,6 +86,8 @@ pub fn start_game(mut game: Game) {
                     }
 
                     handle_shot(coords, &mut other_player);
+
+                    game.turn = other_player.id;
                 }
             }
         }
@@ -97,5 +99,91 @@ fn handle_shot(coords: (u8, u8), enemy: &mut Player) {
         return;
     }
 
-    // TODO check shot and modify enemy accordingly
+    let mut board = enemy.board;
+    let (y, x) = (coords.0 as usize, coords.1 as usize);
+    let field = &mut board[y][x];
+
+    if *field == FieldState::Occupied {
+        *field = FieldState::Hit;
+
+        // check if the ship sank
+        let mut sank = true;
+        let mut ship_fields = vec![(y, x)];
+
+        let mut horizontal = false;
+        if x > 0 {
+            match board[y].get(x - 1) {
+                Some(FieldState::Hit | FieldState::Occupied) => {
+                    horizontal = true;
+                }
+                _ => (),
+            }
+        }
+        match board[y].get(x + 1) {
+            Some(FieldState::Hit | FieldState::Occupied) => {
+                horizontal = true;
+            }
+            _ => (),
+        }
+
+        if horizontal {
+            let mut x_2 = x;
+            while x_2 > 0 {
+                x_2 -= 1;
+                match board[y].get(x_2) {
+                    Some(FieldState::Hit) => {
+                        ship_fields.push((y, x_2));
+                    }
+                    Some(FieldState::Occupied) => {
+                        sank = false;
+                    }
+                    _ => (),
+                }
+            }
+            x_2 = x + 1;
+            while let Some(field) = board[y].get(x_2) {
+                match field {
+                    FieldState::Hit => {
+                        ship_fields.push((y, x_2));
+                    }
+                    FieldState::Occupied => sank = false,
+                    _ => (),
+                }
+                x_2 += 1;
+            }
+        } else {
+            let mut y_2 = y;
+            while y_2 > 0 {
+                y_2 -= 1;
+                match board[y_2][x] {
+                    FieldState::Hit => {
+                        ship_fields.push((y_2, x));
+                    }
+                    FieldState::Occupied => {
+                        sank = false;
+                    }
+                    _ => (),
+                }
+            }
+            y_2 = y + 1;
+            while y_2 < 10 {
+                match board[y_2][x] {
+                    FieldState::Hit => {
+                        ship_fields.push((y_2, x));
+                    }
+                    FieldState::Occupied => sank = false,
+                    _ => (),
+                }
+                y_2 += 1;
+            }
+        }
+
+        if sank {
+            for field in ship_fields {
+                board[field.0][field.1] = FieldState::Sank;
+            }
+        }
+    } else if *field == FieldState::Free {
+        *field = FieldState::Missed;
+    }
 }

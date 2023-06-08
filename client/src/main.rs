@@ -3,8 +3,6 @@ use shared::{send_message, ClientToServer};
 use std::{
     io,
     net::{Ipv4Addr, UdpSocket},
-    thread,
-    time::Duration,
 };
 
 async fn run_client() -> io::Result<()> {
@@ -32,23 +30,6 @@ async fn run_client() -> io::Result<()> {
         [0, 0, 0, 0, 0, 1, 0, 0, 0, 1],
         [0, 0, 0, 0, 0, 1, 0, 0, 0, 1],
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-        [0, 0, 0, 1, 1, 1, 1, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 1, 1, 1, 1, 1, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    ];
-    let msg = ClientToServer::SetBoard(convert_to_bool_array(board));
-    send_message(&mut stream, msg).await.unwrap();
-
-    thread::sleep(Duration::from_secs(1));
-
-    let board = [
-        [1, 0, 1, 0, 1, 1, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-        [0, 0, 0, 0, 0, 0, 0, 1, 0, 1],
-        [0, 0, 0, 0, 0, 0, 0, 1, 0, 1],
         [0, 0, 0, 1, 1, 1, 1, 0, 0, 0],
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
