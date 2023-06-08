@@ -10,8 +10,8 @@ use async_std::{
 use async_stream::stream;
 use futures::{future::Either, pin_mut, stream::select, StreamExt};
 use shared::{
-    receive_message, send_message, AllyBoard, ClientBoard, ClientToServer, EnemyBoard,
-    ServerToClient,
+    receive_message, send_message, AllyBoard, ClientBoard, ClientToServer, DisconnectReason,
+    EnemyBoard, ServerToClient,
 };
 use std::sync::{atomic::Ordering, mpsc::Sender};
 use uuid::Uuid;
@@ -26,7 +26,7 @@ pub enum Message {
     StartGame(Sender<game::Message>),
     UpdateAlly(AllyBoard),
     UpdateEnemy(EnemyBoard),
-    Disconnect,
+    Disconnect(DisconnectReason),
 }
 
 pub struct Player {
@@ -57,7 +57,8 @@ pub fn handle_client(mut stream: TcpStream, manager_tx: Sender<manager::Message>
         while let Some(msg) = combined.next().await {
             match msg {
                 Either::Left(Ok(msg)) => match msg {
-                    Message::Disconnect => {
+                    Message::Disconnect(reason) => {
+                        send_message(&mut send_stream, ServerToClient::Disconnect(reason));
                         break;
                     }
                     Message::StartGame(tx) => {
@@ -143,7 +144,7 @@ fn create_board(client_board: ClientBoard) -> Board {
     board
 }
 
-/// verifies if all ships are used and if there's empty space between ships
+/// Verifies if all ships are used and if there's empty space between ships
 fn verify_board(board: &ClientBoard) -> bool {
     // verify lengths
     let mut checked = [[false; 10]; 10];

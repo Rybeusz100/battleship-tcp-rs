@@ -20,6 +20,14 @@ pub enum ClientToServer {
 pub enum ServerToClient {
     UpdateAlly(AllyBoard),
     UpdateEnemy(EnemyBoard),
+    Disconnect(DisconnectReason),
+}
+
+#[derive(Serialize, Deserialize)]
+pub enum DisconnectReason {
+    Win,
+    Defeat,
+    Error,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq)]

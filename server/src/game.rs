@@ -69,7 +69,9 @@ pub fn start_game(mut game: Game) {
                     // inform other player, end game
                     other_player
                         .tx
-                        .send_blocking(session::Message::Disconnect)
+                        .send_blocking(session::Message::Disconnect(
+                            shared::DisconnectReason::Error,
+                        ))
                         .ok();
                     break;
                 }
@@ -90,7 +92,21 @@ pub fn start_game(mut game: Game) {
                         .send_blocking(session::Message::UpdateAlly(ally_board))
                         .ok();
 
-                    if other_player.alive_ships == 0 {}
+                    if other_player.alive_ships == 0 {
+                        current_player
+                            .tx
+                            .send_blocking(session::Message::Disconnect(
+                                shared::DisconnectReason::Win,
+                            ))
+                            .ok();
+                        other_player
+                            .tx
+                            .send_blocking(session::Message::Disconnect(
+                                shared::DisconnectReason::Defeat,
+                            ))
+                            .ok();
+                        break;
+                    }
 
                     game.turn = other_player.id;
                 }
