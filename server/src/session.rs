@@ -27,6 +27,7 @@ pub enum Message {
     UpdateAlly(AllyBoard),
     UpdateEnemy(EnemyBoard),
     Disconnect(DisconnectReason),
+    YourTurn,
 }
 
 pub struct Player {
@@ -58,7 +59,9 @@ pub fn handle_client(mut stream: TcpStream, manager_tx: Sender<manager::Message>
             match msg {
                 Either::Left(Ok(msg)) => match msg {
                     Message::Disconnect(reason) => {
-                        send_message(&mut send_stream, ServerToClient::Disconnect(reason));
+                        send_message(&mut send_stream, ServerToClient::Disconnect(reason))
+                            .await
+                            .ok();
                         break;
                     }
                     Message::StartGame(tx) => {
@@ -72,6 +75,11 @@ pub fn handle_client(mut stream: TcpStream, manager_tx: Sender<manager::Message>
                     }
                     Message::UpdateEnemy(board) => {
                         send_message(&mut send_stream, ServerToClient::UpdateEnemy(board))
+                            .await
+                            .ok();
+                    }
+                    Message::YourTurn => {
+                        send_message(&mut send_stream, ServerToClient::YourTurn)
                             .await
                             .ok();
                     }
@@ -91,7 +99,12 @@ pub fn handle_client(mut stream: TcpStream, manager_tx: Sender<manager::Message>
                                 manager_tx.send(manager::Message::Ready(player)).unwrap();
                                 state = ClientState::Ready;
                             } else {
-                                println!("Wrong board supplied");
+                                send_message(
+                                    &mut send_stream,
+                                    ServerToClient::Disconnect(DisconnectReason::Error),
+                                )
+                                .await
+                                .ok();
                                 break;
                             }
                         }
@@ -125,7 +138,7 @@ pub fn handle_client(mut stream: TcpStream, manager_tx: Sender<manager::Message>
                 player_id,
                 content: game::MessageContent::Disconnect,
             })
-            .unwrap();
+            .ok();
         }
         println!("Client disconnected");
         CONNECTIONS_COUNT.fetch_sub(1, Ordering::SeqCst);

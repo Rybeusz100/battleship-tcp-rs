@@ -57,6 +57,9 @@ pub fn start_game(mut game: Game) {
             .send(session::Message::StartGame(tx2))
             .await
             .ok();
+
+        game.player_1.tx.send(session::Message::YourTurn).await.ok();
+
         while let Ok(msg) = rx.recv() {
             let (current_player, other_player) = if msg.player_id == game.player_1.id {
                 (&game.player_1, &mut game.player_2)
@@ -109,6 +112,10 @@ pub fn start_game(mut game: Game) {
                     }
 
                     game.turn = other_player.id;
+                    other_player
+                        .tx
+                        .send_blocking(session::Message::YourTurn)
+                        .ok();
                 }
             }
         }
@@ -120,7 +127,7 @@ fn handle_shot(coords: (u8, u8), enemy: &mut Player) {
         return;
     }
 
-    let mut board = enemy.board;
+    let board = &mut enemy.board;
     let (y, x) = (coords.0 as usize, coords.1 as usize);
     let field = &mut board[y][x];
 
@@ -151,8 +158,9 @@ fn handle_shot(coords: (u8, u8), enemy: &mut Player) {
                     }
                     Some(FieldState::Occupied) => {
                         sank = false;
+                        break;
                     }
-                    _ => (),
+                    _ => break,
                 }
             }
             x_2 = x + 1;
@@ -161,8 +169,11 @@ fn handle_shot(coords: (u8, u8), enemy: &mut Player) {
                     FieldState::Hit => {
                         ship_fields.push((y, x_2));
                     }
-                    FieldState::Occupied => sank = false,
-                    _ => (),
+                    FieldState::Occupied => {
+                        sank = false;
+                        break;
+                    }
+                    _ => break,
                 }
                 x_2 += 1;
             }
@@ -176,8 +187,9 @@ fn handle_shot(coords: (u8, u8), enemy: &mut Player) {
                     }
                     FieldState::Occupied => {
                         sank = false;
+                        break;
                     }
-                    _ => (),
+                    _ => break,
                 }
             }
             y_2 = y + 1;
@@ -186,8 +198,11 @@ fn handle_shot(coords: (u8, u8), enemy: &mut Player) {
                     FieldState::Hit => {
                         ship_fields.push((y_2, x));
                     }
-                    FieldState::Occupied => sank = false,
-                    _ => (),
+                    FieldState::Occupied => {
+                        sank = false;
+                        break;
+                    }
+                    _ => break,
                 }
                 y_2 += 1;
             }

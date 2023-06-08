@@ -16,21 +16,22 @@ pub enum ClientToServer {
     Shoot((u8, u8)),
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub enum ServerToClient {
     UpdateAlly(AllyBoard),
     UpdateEnemy(EnemyBoard),
     Disconnect(DisconnectReason),
+    YourTurn,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub enum DisconnectReason {
     Win,
     Defeat,
     Error,
 }
 
-#[derive(Serialize, Deserialize, Clone, Copy, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Debug)]
 pub enum AllyField {
     Free,
     Occupied,
@@ -39,7 +40,7 @@ pub enum AllyField {
     Sank,
 }
 
-#[derive(Serialize, Deserialize, Clone, Copy, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Debug)]
 pub enum EnemyField {
     Unknown,
     Hit,
