@@ -1,13 +1,14 @@
-use crate::{game::{Game, start_game}, session::Player};
-use async_std::task;
-use std::{
-    sync::mpsc::{self, Sender},
+use crate::{
+    game::{start_game, Game},
+    session::Player,
 };
+use async_std::task;
+use std::sync::mpsc::{self, Sender};
 use uuid::Uuid;
 
 pub enum Message {
     Ready(Player),
-    Disconnect(Uuid)
+    Disconnect(Uuid),
 }
 
 pub fn start_manager() -> Sender<Message> {

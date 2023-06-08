@@ -1,8 +1,11 @@
-use lazy_static::lazy_static;
-use std::{collections::HashMap, sync::mpsc::{self, Sender}};
-use uuid::Uuid;
+use crate::session::{self, Player};
 use async_std::task;
-use crate::session::Player;
+use lazy_static::lazy_static;
+use std::{
+    collections::HashMap,
+    sync::mpsc::{self, Sender},
+};
+use uuid::Uuid;
 
 pub const INITIAL_SHIPS_COUNT: u8 = 7;
 
@@ -36,16 +39,24 @@ pub struct Game {
 }
 
 pub enum Message {
-    Disconnect
+    Disconnect,
 }
 
 pub fn start_game(game: Game) -> Sender<Message> {
     let (tx, rx) = mpsc::channel();
 
     task::spawn(async move {
-        while let Ok(msg) = rx.recv() {
-
-        }
+        game.player_1
+            .tx
+            .send(session::Message::StartGame)
+            .await
+            .ok();
+        game.player_2
+            .tx
+            .send(session::Message::StartGame)
+            .await
+            .ok();
+        while let Ok(msg) = rx.recv() {}
     });
 
     tx
