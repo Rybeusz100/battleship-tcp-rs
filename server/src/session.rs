@@ -1,5 +1,5 @@
 use crate::{
-    game::{self, Board, FieldState, INITIAL_SHIPS_COUNT},
+    game::{self, Board, FieldState, INITIAL_SHIPS_COUNT, REQUIRED_SHIPS},
     manager, CONNECTIONS_COUNT,
 };
 use async_std::task;
@@ -73,6 +73,9 @@ pub fn handle_client(mut stream: TcpStream, manager_tx: Sender<manager::Message>
                                 };
                                 manager_tx.send(manager::Message::Ready(player)).unwrap();
                                 state = ClientState::Ready;
+                            } else {
+                                println!("Wrong board supplied");
+                                break;
                             }
                         }
                     }
@@ -126,7 +129,85 @@ fn create_board(client_board: ClientBoard) -> Board {
 
 /// verifies if all ships are used and if there's empty space between ships
 fn verify_board(board: &ClientBoard) -> bool {
-    // TODO verify lengths
-    // TODO verify spacing
+    // verify lengths
+    let mut checked = [[false; 10]; 10];
+
+    let mut ship_lengths = [0; 11];
+    for (y, row) in board.iter().enumerate() {
+        for (x, field) in row.iter().enumerate() {
+            if !field || checked[y][x] {
+                continue;
+            }
+
+            let mut ship_length = 1;
+
+            // check horizontal ship
+            let mut x_2 = x + 1;
+            while let Some(true) = board[y].get(x_2) {
+                ship_length += 1;
+                checked[y][x_2] = true;
+                x_2 += 1;
+            }
+
+            if ship_length > 1 {
+                ship_lengths[ship_length] += 1;
+                continue;
+            }
+
+            // check vertical ship
+            let mut y_2 = y + 1;
+            while let Some(row) = board.get(y_2) {
+                if row[x] {
+                    ship_length += 1;
+                    checked[y_2][x] = true;
+                    y_2 += 1;
+                } else {
+                    break;
+                }
+            }
+
+            ship_lengths[ship_length] += 1;
+        }
+    }
+
+    if ship_lengths != REQUIRED_SHIPS {
+        return false;
+    }
+
+    // verify spacing
+    for (y, row) in board.iter().enumerate() {
+        for (x, field) in row.iter().enumerate() {
+            if !field {
+                continue;
+            }
+
+            let mut neighbors = [false; 4];
+            if let Some(true) = board[y].get(x + 1) {
+                neighbors[0] = true;
+            }
+            if x > 0 {
+                if let Some(true) = board[y].get(x - 1) {
+                    neighbors[2] = true;
+                }
+            }
+            if let Some(row) = board.get(y + 1) {
+                if row[x] {
+                    neighbors[1] = true;
+                }
+            }
+            if y > 0 {
+                if let Some(row) = board.get(y - 1) {
+                    if row[x] {
+                        neighbors[3] = true;
+                    }
+                }
+            }
+
+            if (neighbors[0] || neighbors[2]) && (neighbors[1] || neighbors[3]) {
+                return false;
+            }
+        }
+    }
+
     true
 }

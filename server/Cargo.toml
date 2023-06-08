@@ -8,6 +8,5 @@ async-std = "1.12.0"
 async-stream = "0.3.5"
 dotenv = "0.15.0"
 futures = "0.3.28"
-lazy_static = "1.4.0"
 shared = { path = "../shared" }
 uuid = { version = "1.3.3", features = ["v4"] }

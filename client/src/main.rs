@@ -26,12 +26,36 @@ async fn run_client() -> io::Result<()> {
 
     let mut stream = TcpStream::connect(server_addr).await.unwrap();
 
-    let msg = ClientToServer::SetBoard([[false; 10]; 10]);
+    let board = [
+        [1, 0, 1, 0, 1, 1, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 1, 0, 0, 0, 1],
+        [0, 0, 0, 0, 0, 1, 0, 0, 0, 1],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+        [0, 0, 0, 1, 1, 1, 1, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 1, 1, 1, 1, 1, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    ];
+    let msg = ClientToServer::SetBoard(convert_to_bool_array(board));
     send_message(&mut stream, msg).await.unwrap();
 
-    thread::sleep(Duration::from_secs(5));
+    thread::sleep(Duration::from_secs(1));
 
-    let msg = ClientToServer::SetBoard([[true; 10]; 10]);
+    let board = [
+        [1, 0, 1, 0, 1, 1, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+        [0, 0, 0, 0, 0, 0, 0, 1, 0, 1],
+        [0, 0, 0, 0, 0, 0, 0, 1, 0, 1],
+        [0, 0, 0, 1, 1, 1, 1, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 1, 1, 1, 1, 1, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    ];
+    let msg = ClientToServer::SetBoard(convert_to_bool_array(board));
     send_message(&mut stream, msg).await.unwrap();
 
     Ok(())
@@ -42,4 +66,16 @@ fn main() -> io::Result<()> {
         run_client().await?;
         Ok(())
     })
+}
+
+fn convert_to_bool_array(input: [[i32; 10]; 10]) -> [[bool; 10]; 10] {
+    let mut bool_array = [[false; 10]; 10];
+
+    for i in 0..10 {
+        for j in 0..10 {
+            bool_array[i][j] = input[i][j] != 0;
+        }
+    }
+
+    bool_array
 }
