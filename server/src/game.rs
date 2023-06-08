@@ -86,6 +86,9 @@ pub fn start_game(mut game: Game) {
                     }
 
                     handle_shot(coords, &mut other_player);
+                    if other_player.alive_ships == 0 {
+                        
+                    }
 
                     game.turn = other_player.id;
                 }
@@ -179,6 +182,7 @@ fn handle_shot(coords: (u8, u8), enemy: &mut Player) {
         }
 
         if sank {
+            enemy.alive_ships -= 1;
             for field in ship_fields {
                 board[field.0][field.1] = FieldState::Sank;
             }
