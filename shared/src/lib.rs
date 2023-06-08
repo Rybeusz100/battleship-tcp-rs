@@ -11,6 +11,7 @@ pub type ClientBoard = [[bool; 10]; 10];
 #[derive(Serialize, Deserialize)]
 pub enum ClientToServer {
     SetBoard(ClientBoard),
+    Shoot((u8, u8)),
 }
 
 pub async fn send_message<T: Serialize>(stream: &mut TcpStream, msg: T) -> anyhow::Result<()> {

@@ -22,12 +22,7 @@ pub fn start_manager() -> Sender<Message> {
                 Message::Ready(new_player) => {
                     println!("Player ready");
                     if let Some(old_player) = waiting_player {
-                        let id = Uuid::new_v4();
-                        let new_game = Game {
-                            id,
-                            player_1: old_player,
-                            player_2: new_player,
-                        };
+                        let new_game = Game::new(old_player, new_player);
                         waiting_player = None;
                         start_game(new_game);
                     } else {

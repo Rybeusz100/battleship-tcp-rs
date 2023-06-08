@@ -1,5 +1,5 @@
 use crate::{
-    game::{Board, FieldState, INITIAL_SHIPS_COUNT},
+    game::{self, Board, FieldState, INITIAL_SHIPS_COUNT},
     manager, CONNECTIONS_COUNT,
 };
 use async_std::task;
@@ -20,7 +20,7 @@ enum ClientState {
 }
 
 pub enum Message {
-    StartGame,
+    StartGame(Sender<game::Message>),
     Disconnect,
 }
 
@@ -38,6 +38,7 @@ pub fn handle_client(mut stream: TcpStream, manager_tx: Sender<manager::Message>
         let mut state = ClientState::Connected;
         let player_id = Uuid::new_v4();
         let (tx, rx) = channel::unbounded();
+        let mut game_tx = None;
 
         let combined = select(
             stream! { loop { yield Either::Left(rx.recv().await) } },
@@ -53,8 +54,9 @@ pub fn handle_client(mut stream: TcpStream, manager_tx: Sender<manager::Message>
                     Message::Disconnect => {
                         break;
                     }
-                    Message::StartGame => {
-                        println!("Starting game");
+                    Message::StartGame(tx) => {
+                        state = ClientState::Playing;
+                        game_tx = Some(tx);
                     }
                 },
                 Either::Right(Ok(msg)) => match state {
@@ -74,6 +76,18 @@ pub fn handle_client(mut stream: TcpStream, manager_tx: Sender<manager::Message>
                             }
                         }
                     }
+                    ClientState::Playing => {
+                        if let Some(game_tx) = game_tx.as_ref() {
+                            if let ClientToServer::Shoot(coords) = msg {
+                                game_tx
+                                    .send(game::Message {
+                                        player_id,
+                                        content: game::MessageContent::Shoot(coords),
+                                    })
+                                    .unwrap();
+                            }
+                        }
+                    }
                     _ => (),
                 },
                 _ => {
@@ -82,9 +96,17 @@ pub fn handle_client(mut stream: TcpStream, manager_tx: Sender<manager::Message>
                 }
             }
         }
+
         manager_tx
             .send(manager::Message::Disconnect(player_id))
             .unwrap();
+        if let Some(tx) = game_tx {
+            tx.send(game::Message {
+                player_id,
+                content: game::MessageContent::Disconnect,
+            })
+            .unwrap();
+        }
         println!("Client disconnected");
         CONNECTIONS_COUNT.fetch_sub(1, Ordering::SeqCst);
     });
