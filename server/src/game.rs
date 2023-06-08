@@ -1,5 +1,6 @@
 use crate::session::{self, Player};
 use async_std::task;
+use shared::{AllyBoard, AllyField, EnemyBoard, EnemyField};
 use std::sync::mpsc;
 use uuid::Uuid;
 
@@ -8,15 +9,7 @@ pub const INITIAL_SHIPS_COUNT: u8 = 7;
 pub const REQUIRED_SHIPS: [u8; 11] = [0, 2, 2, 1, 1, 1, 0, 0, 0, 0, 0];
 
 pub type Board = [[FieldState; 10]; 10];
-
-#[derive(Clone, Copy, PartialEq)]
-pub enum FieldState {
-    Free,
-    Occupied,
-    Missed,
-    Hit,
-    Sank,
-}
+pub type FieldState = AllyField;
 
 pub struct Game {
     pub id: Uuid,
@@ -65,7 +58,7 @@ pub fn start_game(mut game: Game) {
             .await
             .ok();
         while let Ok(msg) = rx.recv() {
-            let (current_player, mut other_player) = if msg.player_id == game.player_1.id {
+            let (current_player, other_player) = if msg.player_id == game.player_1.id {
                 (&game.player_1, &mut game.player_2)
             } else {
                 (&game.player_2, &mut game.player_1)
@@ -85,10 +78,19 @@ pub fn start_game(mut game: Game) {
                         continue;
                     }
 
-                    handle_shot(coords, &mut other_player);
-                    if other_player.alive_ships == 0 {
-                        
-                    }
+                    handle_shot(coords, other_player);
+
+                    let (ally_board, enemy_board) = prepare_boards_to_send(&other_player.board);
+                    current_player
+                        .tx
+                        .send_blocking(session::Message::UpdateEnemy(enemy_board))
+                        .ok();
+                    other_player
+                        .tx
+                        .send_blocking(session::Message::UpdateAlly(ally_board))
+                        .ok();
+
+                    if other_player.alive_ships == 0 {}
 
                     game.turn = other_player.id;
                 }
@@ -115,18 +117,12 @@ fn handle_shot(coords: (u8, u8), enemy: &mut Player) {
 
         let mut horizontal = false;
         if x > 0 {
-            match board[y].get(x - 1) {
-                Some(FieldState::Hit | FieldState::Occupied) => {
-                    horizontal = true;
-                }
-                _ => (),
-            }
-        }
-        match board[y].get(x + 1) {
-            Some(FieldState::Hit | FieldState::Occupied) => {
+            if let Some(FieldState::Hit | FieldState::Occupied) = board[y].get(x - 1) {
                 horizontal = true;
             }
-            _ => (),
+        }
+        if let Some(FieldState::Hit | FieldState::Occupied) = board[y].get(x + 1) {
+            horizontal = true;
         }
 
         if horizontal {
@@ -190,4 +186,21 @@ fn handle_shot(coords: (u8, u8), enemy: &mut Player) {
     } else if *field == FieldState::Free {
         *field = FieldState::Missed;
     }
+}
+
+fn prepare_boards_to_send(board: &Board) -> (AllyBoard, EnemyBoard) {
+    let mut e_board = [[EnemyField::Unknown; 10]; 10];
+
+    for (y, row) in board.iter().enumerate() {
+        for (x, field) in row.iter().enumerate() {
+            e_board[y][x] = match field {
+                AllyField::Free | AllyField::Occupied => EnemyField::Unknown,
+                AllyField::Hit => EnemyField::Hit,
+                AllyField::Missed => EnemyField::Missed,
+                AllyField::Sank => EnemyField::Sank,
+            };
+        }
+    }
+
+    (*board, e_board)
 }

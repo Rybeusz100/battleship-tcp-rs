@@ -9,7 +9,10 @@ use async_std::{
 };
 use async_stream::stream;
 use futures::{future::Either, pin_mut, stream::select, StreamExt};
-use shared::{receive_message, ClientBoard, ClientToServer};
+use shared::{
+    receive_message, send_message, AllyBoard, ClientBoard, ClientToServer, EnemyBoard,
+    ServerToClient,
+};
 use std::sync::{atomic::Ordering, mpsc::Sender};
 use uuid::Uuid;
 
@@ -21,6 +24,8 @@ enum ClientState {
 
 pub enum Message {
     StartGame(Sender<game::Message>),
+    UpdateAlly(AllyBoard),
+    UpdateEnemy(EnemyBoard),
     Disconnect,
 }
 
@@ -39,6 +44,7 @@ pub fn handle_client(mut stream: TcpStream, manager_tx: Sender<manager::Message>
         let player_id = Uuid::new_v4();
         let (tx, rx) = channel::unbounded();
         let mut game_tx = None;
+        let mut send_stream = stream.clone();
 
         let combined = select(
             stream! { loop { yield Either::Left(rx.recv().await) } },
@@ -57,6 +63,16 @@ pub fn handle_client(mut stream: TcpStream, manager_tx: Sender<manager::Message>
                     Message::StartGame(tx) => {
                         state = ClientState::Playing;
                         game_tx = Some(tx);
+                    }
+                    Message::UpdateAlly(board) => {
+                        send_message(&mut send_stream, ServerToClient::UpdateAlly(board))
+                            .await
+                            .ok();
+                    }
+                    Message::UpdateEnemy(board) => {
+                        send_message(&mut send_stream, ServerToClient::UpdateEnemy(board))
+                            .await
+                            .ok();
                     }
                 },
                 Either::Right(Ok(msg)) => match state {

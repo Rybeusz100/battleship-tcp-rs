@@ -7,11 +7,36 @@ use serde::{Deserialize, Serialize};
 use std::io::Cursor;
 
 pub type ClientBoard = [[bool; 10]; 10];
+pub type AllyBoard = [[AllyField; 10]; 10];
+pub type EnemyBoard = [[EnemyField; 10]; 10];
 
 #[derive(Serialize, Deserialize)]
 pub enum ClientToServer {
     SetBoard(ClientBoard),
     Shoot((u8, u8)),
+}
+
+#[derive(Serialize, Deserialize)]
+pub enum ServerToClient {
+    UpdateAlly(AllyBoard),
+    UpdateEnemy(EnemyBoard),
+}
+
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq)]
+pub enum AllyField {
+    Free,
+    Occupied,
+    Missed,
+    Hit,
+    Sank,
+}
+
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq)]
+pub enum EnemyField {
+    Unknown,
+    Hit,
+    Sank,
+    Missed,
 }
 
 pub async fn send_message<T: Serialize>(stream: &mut TcpStream, msg: T) -> anyhow::Result<()> {
