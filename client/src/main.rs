@@ -1,20 +1,25 @@
-use crate::utils::{convert_to_bool_array, parse_board_coordinates};
+use crate::utils::{convert_to_bool_array, draw_board, parse_board_coordinates};
 use async_std::{net::TcpStream, task};
-#[cfg(feature = "automatic")]
-use rand::Rng;
-use shared::{
-    receive_message, send_message, AllyBoard, AllyField, ClientToServer, EnemyBoard, EnemyField,
-    ServerToClient,
+use crossterm::{
+    cursor::MoveTo,
+    terminal::{Clear, ClearType},
+    ExecutableCommand,
 };
+use shared::{receive_message, send_message, ClientToServer, ServerToClient};
 use std::{
-    io::{self, BufRead},
+    io::{self, stdout, BufRead},
     net::{Ipv4Addr, UdpSocket},
     time::Duration,
 };
+#[cfg(feature = "automatic")]
+use {rand::Rng, std::thread};
 
 mod utils;
 
 async fn run_client() -> io::Result<()> {
+    stdout().execute(Clear(ClearType::All))?;
+    stdout().execute(MoveTo(0, 0))?;
+
     #[cfg(feature = "automatic")]
     let mut rng = rand::thread_rng();
 
@@ -31,8 +36,6 @@ async fn run_client() -> io::Result<()> {
         [0, 0, 0, 1, 1, 1, 1, 1, 0, 0],
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     ];
-    let mut ally_board: AllyBoard = [[AllyField::Free; 10]; 10];
-    let mut enemy_board: EnemyBoard = [[EnemyField::Unknown; 10]; 10];
 
     let multicast_addr = "239.255.255.250:1901";
     let socket = UdpSocket::bind("0.0.0.0:0").unwrap();
@@ -67,17 +70,22 @@ async fn run_client() -> io::Result<()> {
     while let Ok(msg) = receive_message::<ServerToClient>(&mut stream).await {
         match msg {
             ServerToClient::UpdateAlly(board) => {
-                ally_board = board;
+                draw_board(board, (0, 4))?;
             }
-            ServerToClient::UpdateEnemy(board) => enemy_board = board,
+            ServerToClient::UpdateEnemy(board) => {
+                draw_board(board, (30, 4))?;
+            }
             ServerToClient::Disconnect(reason) => {
+                stdout().execute(MoveTo(0, 16))?;
                 println!("Disconnected because: {:?}", reason);
                 break;
             }
             ServerToClient::YourTurn => {
+                stdout().execute(MoveTo(0, 16))?;
                 println!("Your turn!");
                 #[cfg(feature = "automatic")]
                 {
+                    thread::sleep(Duration::from_millis(100));
                     let coords = (rng.gen_range(0..=9), rng.gen_range(0..=9));
                     send_message(&mut stream, ClientToServer::Shoot(coords))
                         .await
@@ -95,6 +103,9 @@ async fn run_client() -> io::Result<()> {
                             send_message(&mut stream, ClientToServer::Shoot(coords))
                                 .await
                                 .ok();
+                            stdout()
+                                .execute(MoveTo(0, 16))?
+                                .execute(Clear(ClearType::FromCursorDown))?;
                             break;
                         }
                         Err(why) => {

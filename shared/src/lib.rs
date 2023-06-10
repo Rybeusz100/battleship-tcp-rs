@@ -74,3 +74,26 @@ pub async fn receive_message<T: for<'a> Deserialize<'a>>(
     let msg: T = bincode::deserialize(&buf)?;
     Ok(msg)
 }
+
+impl From<AllyField> for char {
+    fn from(field: AllyField) -> char {
+        match field {
+            AllyField::Free => '🟦',
+            AllyField::Occupied => '⚪',
+            AllyField::Missed => '🟫',
+            AllyField::Hit => '🟡',
+            AllyField::Sank => '🔴',
+        }
+    }
+}
+
+impl From<EnemyField> for char {
+    fn from(field: EnemyField) -> char {
+        match field {
+            EnemyField::Unknown => '🟦',
+            EnemyField::Hit => '🟡',
+            EnemyField::Sank => '🔴',
+            EnemyField::Missed => '🟫',
+        }
+    }
+}
