@@ -5,23 +5,24 @@ use crossterm::{
     terminal::{Clear, ClearType},
     ExecutableCommand,
 };
+use rand::seq::SliceRandom;
 use shared::{receive_message, send_message, ClientToServer, ServerToClient};
 use std::{
+    env,
     io::{self, stdout, BufRead},
     net::{Ipv4Addr, UdpSocket},
     time::Duration,
 };
-#[cfg(feature = "automatic")]
-use {rand::Rng, std::thread};
+use {shared::EnemyField, std::thread};
 
 mod utils;
 
-async fn run_client() -> io::Result<()> {
+async fn run_client(automatic: bool) -> io::Result<()> {
     stdout().execute(Clear(ClearType::All))?;
     stdout().execute(MoveTo(0, 0))?;
 
-    #[cfg(feature = "automatic")]
     let mut rng = rand::thread_rng();
+    let mut enemy_board = [[EnemyField::Unknown; 10]; 10];
 
     // TODO read input
     let board = [
@@ -73,6 +74,9 @@ async fn run_client() -> io::Result<()> {
                 draw_board(board, (0, 4))?;
             }
             ServerToClient::UpdateEnemy(board) => {
+                if automatic {
+                    enemy_board = board;
+                }
                 draw_board(board, (30, 4))?;
             }
             ServerToClient::Disconnect(reason) => {
@@ -83,15 +87,29 @@ async fn run_client() -> io::Result<()> {
             ServerToClient::YourTurn => {
                 stdout().execute(MoveTo(0, 16))?;
                 println!("Your turn!");
-                #[cfg(feature = "automatic")]
-                {
+
+                if automatic {
+                    let unknown_fields: Vec<(u8, u8)> = enemy_board
+                        .iter()
+                        .enumerate()
+                        .flat_map(|(i, row)| {
+                            row.iter().enumerate().filter_map(move |(j, field)| {
+                                if *field == EnemyField::Unknown {
+                                    Some((i as u8, j as u8))
+                                } else {
+                                    None
+                                }
+                            })
+                        })
+                        .collect();
+                    let coords = unknown_fields.choose(&mut rng).copied().unwrap();
                     thread::sleep(Duration::from_millis(100));
-                    let coords = (rng.gen_range(0..=9), rng.gen_range(0..=9));
                     send_message(&mut stream, ClientToServer::Shoot(coords))
                         .await
                         .ok();
                     continue;
                 }
+
                 loop {
                     let mut input = String::new();
                     io::stdin().lock().read_line(&mut input).unwrap();
@@ -121,8 +139,9 @@ async fn run_client() -> io::Result<()> {
 }
 
 fn main() -> io::Result<()> {
+    let args: Vec<String> = env::args().collect();
     task::block_on(async {
-        run_client().await?;
+        run_client(args.len() > 1 && args[1] == "automatic").await?;
         Ok(())
     })
 }

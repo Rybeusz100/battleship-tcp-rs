@@ -3,9 +3,6 @@ name = "client"
 version = "0.1.0"
 edition = "2021"
 
-[features]
-automatic = []
-
 [dependencies]
 async-std = "1.12.0"
 crossterm = "0.26.1"
