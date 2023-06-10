@@ -1,4 +1,6 @@
 use async_std::{net::TcpStream, task};
+#[cfg(feature = "automatic")]
+use rand::Rng;
 use shared::{
     receive_message, send_message, AllyBoard, AllyField, ClientToServer, EnemyBoard, EnemyField,
     ServerToClient,
@@ -10,6 +12,9 @@ use std::{
 };
 
 async fn run_client() -> io::Result<()> {
+    #[cfg(feature = "automatic")]
+    let mut rng = rand::thread_rng();
+
     // TODO read input
     let board = [
         [1, 0, 1, 0, 1, 1, 0, 0, 0, 0],
@@ -70,7 +75,8 @@ async fn run_client() -> io::Result<()> {
                 println!("Your turn!");
                 #[cfg(feature = "automatic")]
                 {
-                    send_message(&mut stream, ClientToServer::Shoot((0, 0)))
+                    let coords = (rng.gen_range(0..=9), rng.gen_range(0..=9));
+                    send_message(&mut stream, ClientToServer::Shoot(coords))
                         .await
                         .ok();
                     continue;

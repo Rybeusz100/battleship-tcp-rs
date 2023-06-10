@@ -8,4 +8,5 @@ automatic = []
 
 [dependencies]
 async-std = "1.12.0"
+rand = "0.8.5"
 shared = { path = "../shared" }
