@@ -6,6 +6,7 @@ use shared::{
 use std::{
     io::{self, BufRead},
     net::{Ipv4Addr, UdpSocket},
+    time::Duration,
 };
 
 async fn run_client() -> io::Result<()> {
@@ -33,14 +34,22 @@ async fn run_client() -> io::Result<()> {
         .join_multicast_v4(&Ipv4Addr::new(239, 255, 255, 250), &Ipv4Addr::UNSPECIFIED)
         .unwrap();
 
-    socket
-        .send_to("Discovery message".as_bytes(), multicast_addr)
-        .unwrap();
-
     println!("Waiting for server...");
-    let response_size = socket.recv(&mut buf).unwrap();
-    let server_addr = std::str::from_utf8(&buf[..response_size]).unwrap();
-    println!("Found server: {}", server_addr);
+    let server_addr;
+    socket
+        .set_read_timeout(Some(Duration::from_secs(2)))
+        .unwrap();
+    loop {
+        socket
+            .send_to("Discovery message".as_bytes(), multicast_addr)
+            .unwrap();
+
+        if let Ok(response_size) = socket.recv(&mut buf) {
+            server_addr = std::str::from_utf8(&buf[..response_size]).unwrap();
+            println!("Found server: {}", server_addr);
+            break;
+        }
+    }
 
     let mut stream = TcpStream::connect(server_addr).await.unwrap();
 
