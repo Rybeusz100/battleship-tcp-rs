@@ -8,5 +8,6 @@ automatic = []
 
 [dependencies]
 async-std = "1.12.0"
+crossterm = "0.26.1"
 rand = "0.8.5"
 shared = { path = "../shared" }
