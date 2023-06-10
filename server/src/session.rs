@@ -4,7 +4,7 @@ use crate::{
 };
 use async_std::task;
 use async_std::{
-    channel::{self, Sender as AsyncSender},
+    channel::{self, Sender},
     net::TcpStream,
 };
 use async_stream::stream;
@@ -13,7 +13,7 @@ use shared::{
     receive_message, send_message, AllyBoard, ClientBoard, ClientToServer, DisconnectReason,
     EnemyBoard, ServerToClient,
 };
-use std::sync::{atomic::Ordering, mpsc::Sender};
+use std::sync::atomic::Ordering;
 use uuid::Uuid;
 
 enum ClientState {
@@ -32,7 +32,7 @@ pub enum Message {
 
 pub struct Player {
     pub id: Uuid,
-    pub tx: AsyncSender<Message>,
+    pub tx: Sender<Message>,
     pub board: Board,
     pub alive_ships: u8,
 }
@@ -96,7 +96,10 @@ pub fn handle_client(mut stream: TcpStream, manager_tx: Sender<manager::Message>
                                     board,
                                     alive_ships: INITIAL_SHIPS_COUNT,
                                 };
-                                manager_tx.send(manager::Message::Ready(player)).unwrap();
+                                manager_tx
+                                    .send(manager::Message::Ready(player))
+                                    .await
+                                    .unwrap();
                                 state = ClientState::Ready;
                             } else {
                                 send_message(
@@ -117,6 +120,7 @@ pub fn handle_client(mut stream: TcpStream, manager_tx: Sender<manager::Message>
                                         player_id,
                                         content: game::MessageContent::Shoot(coords),
                                     })
+                                    .await
                                     .unwrap();
                             }
                         }
@@ -132,12 +136,14 @@ pub fn handle_client(mut stream: TcpStream, manager_tx: Sender<manager::Message>
 
         manager_tx
             .send(manager::Message::Disconnect(player_id))
+            .await
             .unwrap();
         if let Some(tx) = game_tx {
             tx.send(game::Message {
                 player_id,
                 content: game::MessageContent::Disconnect,
             })
+            .await
             .ok();
         }
         println!("Client disconnected");

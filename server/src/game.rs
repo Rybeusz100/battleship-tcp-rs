@@ -1,7 +1,6 @@
 use crate::session::{self, Player};
-use async_std::task;
+use async_std::{channel, task};
 use shared::{AllyBoard, AllyField, EnemyBoard, EnemyField};
-use std::sync::mpsc;
 use uuid::Uuid;
 
 pub const INITIAL_SHIPS_COUNT: u8 = 7;
@@ -42,7 +41,7 @@ pub enum MessageContent {
 pub fn start_game(mut game: Game) {
     println!("Starting game");
 
-    let (tx, rx) = mpsc::channel();
+    let (tx, rx) = channel::unbounded();
 
     task::spawn(async move {
         let tx1 = tx.clone();
@@ -60,7 +59,7 @@ pub fn start_game(mut game: Game) {
 
         game.player_1.tx.send(session::Message::YourTurn).await.ok();
 
-        while let Ok(msg) = rx.recv() {
+        while let Ok(msg) = rx.recv().await {
             let (current_player, other_player) = if msg.player_id == game.player_1.id {
                 (&game.player_1, &mut game.player_2)
             } else {

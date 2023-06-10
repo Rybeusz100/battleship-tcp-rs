@@ -2,8 +2,10 @@ use crate::{
     game::{start_game, Game},
     session::Player,
 };
-use async_std::task;
-use std::sync::mpsc::{self, Sender};
+use async_std::{
+    channel::{self, Sender},
+    task,
+};
 use uuid::Uuid;
 
 pub enum Message {
@@ -12,12 +14,12 @@ pub enum Message {
 }
 
 pub fn start_manager() -> Sender<Message> {
-    let (tx, rx) = mpsc::channel();
+    let (tx, rx) = channel::unbounded();
 
     task::spawn(async move {
         let mut waiting_player: Option<Player> = None;
 
-        while let Ok(msg) = rx.recv() {
+        while let Ok(msg) = rx.recv().await {
             match msg {
                 Message::Ready(new_player) => {
                     println!("Player ready");
