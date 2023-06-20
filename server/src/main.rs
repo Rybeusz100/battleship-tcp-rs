@@ -9,7 +9,11 @@ use std::sync::atomic::{AtomicU32, Ordering};
 use std::{env, io, net::SocketAddrV4};
 
 #[cfg(all(target_os = "linux", feature = "daemonize"))]
-use {daemonize::Daemonize, std::fs::File};
+use {
+    daemonize::Daemonize,
+    std::fs::File,
+    syslog::{BasicLogger, Formatter3164},
+};
 
 mod game;
 mod manager;
@@ -54,10 +58,24 @@ async fn run_server() -> io::Result<()> {
 
 fn main() -> io::Result<()> {
     dotenv().ok();
+
+    #[cfg(not(all(target_os = "linux", feature = "daemonize")))]
     pretty_env_logger::init();
 
     #[cfg(all(target_os = "linux", feature = "daemonize"))]
     {
+        let formatter = Formatter3164 {
+            facility: syslog::Facility::LOG_USER,
+            hostname: None,
+            process: "battleship".to_owned(),
+            pid: 0,
+        };
+
+        let logger = syslog::unix(formatter).unwrap();
+        log::set_boxed_logger(Box::new(BasicLogger::new(logger)))
+            .map(|()| log::set_max_level(log::LevelFilter::Info))
+            .unwrap();
+
         let stdout = File::create("/tmp/battleship.out").unwrap();
         let stderr = File::create("/tmp/battleship.err").unwrap();
 
