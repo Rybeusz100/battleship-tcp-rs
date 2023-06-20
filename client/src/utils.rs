@@ -1,18 +1,6 @@
 use crossterm::{cursor::MoveTo, style::Print, ExecutableCommand};
 use std::io::{self, stdout};
 
-pub fn convert_to_bool_array(input: [[i32; 10]; 10]) -> [[bool; 10]; 10] {
-    let mut bool_array = [[false; 10]; 10];
-
-    for i in 0..10 {
-        for j in 0..10 {
-            bool_array[i][j] = input[i][j] != 0;
-        }
-    }
-
-    bool_array
-}
-
 pub fn parse_board_coordinates(input: &str) -> Result<(u8, u8), String> {
     if input.len() != 2 {
         return Err("Invalid input length".to_string());

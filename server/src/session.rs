@@ -87,7 +87,6 @@ pub fn handle_client(mut stream: TcpStream, manager_tx: Sender<manager::Message>
                 Either::Right(Ok(msg)) => match state {
                     ClientState::Connected => {
                         if let ClientToServer::SetBoard(client_board) = msg {
-                            println!("Received board {:?}", client_board);
                             if verify_board(&client_board) {
                                 let board = create_board(client_board);
                                 let player = Player {

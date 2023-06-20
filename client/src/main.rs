@@ -1,4 +1,4 @@
-use crate::utils::{convert_to_bool_array, draw_board, parse_board_coordinates};
+use crate::utils::{draw_board, parse_board_coordinates};
 use async_std::{net::TcpStream, task};
 use crossterm::{
     cursor::MoveTo,
@@ -9,7 +9,8 @@ use rand::seq::SliceRandom;
 use shared::{receive_message, send_message, ClientToServer, ServerToClient};
 use std::{
     env,
-    io::{self, stdout, BufRead},
+    fs::File,
+    io::{self, stdout, BufRead, BufReader},
     net::{Ipv4Addr, UdpSocket},
     time::Duration,
 };
@@ -24,19 +25,24 @@ async fn run_client(automatic: bool) -> io::Result<()> {
     let mut rng = rand::thread_rng();
     let mut enemy_board = [[EnemyField::Unknown; 10]; 10];
 
-    // TODO read input
-    let board = [
-        [1, 0, 1, 0, 1, 1, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 1, 0, 0, 0, 1],
-        [0, 0, 0, 0, 0, 1, 0, 0, 0, 1],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-        [0, 0, 0, 1, 1, 1, 1, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 1, 1, 1, 1, 1, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    ];
+    let mut board = [[false; 10]; 10];
+
+    let file = File::open("board.txt").expect("Failed to open board.txt");
+    let reader = BufReader::new(file);
+
+    for (y, line) in reader.lines().enumerate().take(10) {
+        let line = line.expect("Failed to read line");
+        if line.len() != 10 {
+            panic!("Incorrect format of board.txt");
+        }
+        for (x, char) in line.chars().enumerate() {
+            board[y][x] = match char {
+                'o' => false,
+                'x' => true,
+                _ => panic!("Incorrect format of board.txt"),
+            };
+        }
+    }
 
     let multicast_addr = "239.255.255.250:1901";
     let socket = UdpSocket::bind("0.0.0.0:0").unwrap();
@@ -65,7 +71,7 @@ async fn run_client(automatic: bool) -> io::Result<()> {
 
     let mut stream = TcpStream::connect(server_addr).await.unwrap();
 
-    let msg = ClientToServer::SetBoard(convert_to_bool_array(board));
+    let msg = ClientToServer::SetBoard(board);
     send_message(&mut stream, msg).await.unwrap();
 
     while let Ok(msg) = receive_message::<ServerToClient>(&mut stream).await {
