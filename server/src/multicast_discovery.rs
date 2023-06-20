@@ -1,5 +1,6 @@
 use async_std::net::UdpSocket;
 use async_std::task;
+use log::debug;
 use std::{
     io,
     net::{Ipv4Addr, SocketAddr, SocketAddrV4},
@@ -20,7 +21,7 @@ pub fn start_multicast_discovery(multicast_addr: SocketAddrV4, response_addr: St
 
         loop {
             if let Ok(peer) = receive_multicast(&socket).await {
-                println!("Received discovery message from {:?}", peer);
+                debug!("Received discovery message from {}", peer);
                 let _ = socket.send_to(response_addr.as_bytes(), peer).await;
             }
         }

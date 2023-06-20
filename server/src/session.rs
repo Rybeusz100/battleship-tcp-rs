@@ -9,11 +9,12 @@ use async_std::{
 };
 use async_stream::stream;
 use futures::{future::Either, pin_mut, stream::select, StreamExt};
+use log::{debug, info};
 use shared::{
     receive_message, send_message, AllyBoard, ClientBoard, ClientToServer, DisconnectReason,
     EnemyBoard, ServerToClient,
 };
-use std::sync::atomic::Ordering;
+use std::{net::SocketAddr, sync::atomic::Ordering};
 use uuid::Uuid;
 
 enum ClientState {
@@ -31,6 +32,7 @@ pub enum Message {
 }
 
 pub struct Player {
+    pub address: SocketAddr,
     pub id: Uuid,
     pub tx: Sender<Message>,
     pub board: Board,
@@ -38,8 +40,14 @@ pub struct Player {
 }
 
 pub fn handle_client(mut stream: TcpStream, manager_tx: Sender<manager::Message>) {
+    let peer_addr = if let Ok(addr) = stream.peer_addr() {
+        addr
+    } else {
+        return;
+    };
+
     task::spawn(async move {
-        println!("Client connected");
+        debug!("{} connected", peer_addr);
         CONNECTIONS_COUNT.fetch_add(1, Ordering::SeqCst);
         let mut state = ClientState::Connected;
         let player_id = Uuid::new_v4();
@@ -54,7 +62,6 @@ pub fn handle_client(mut stream: TcpStream, manager_tx: Sender<manager::Message>
 
         pin_mut!(combined);
 
-        // TODO timeout
         while let Some(msg) = combined.next().await {
             match msg {
                 Either::Left(Ok(msg)) => match msg {
@@ -90,6 +97,7 @@ pub fn handle_client(mut stream: TcpStream, manager_tx: Sender<manager::Message>
                             if verify_board(&client_board) {
                                 let board = create_board(client_board);
                                 let player = Player {
+                                    address: peer_addr,
                                     id: player_id,
                                     tx: tx.clone(),
                                     board,
@@ -127,7 +135,6 @@ pub fn handle_client(mut stream: TcpStream, manager_tx: Sender<manager::Message>
                     _ => (),
                 },
                 _ => {
-                    println!("select! error");
                     break;
                 }
             }
@@ -145,7 +152,7 @@ pub fn handle_client(mut stream: TcpStream, manager_tx: Sender<manager::Message>
             .await
             .ok();
         }
-        println!("Client disconnected");
+        info!("{} disconnected", peer_addr);
         CONNECTIONS_COUNT.fetch_sub(1, Ordering::SeqCst);
     });
 }

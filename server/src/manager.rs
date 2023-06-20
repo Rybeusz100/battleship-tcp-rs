@@ -6,6 +6,7 @@ use async_std::{
     channel::{self, Sender},
     task,
 };
+use log::debug;
 use uuid::Uuid;
 
 pub enum Message {
@@ -22,7 +23,7 @@ pub fn start_manager() -> Sender<Message> {
         while let Ok(msg) = rx.recv().await {
             match msg {
                 Message::Ready(new_player) => {
-                    println!("Player ready");
+                    debug!("{} ready", new_player.address);
                     if let Some(old_player) = waiting_player {
                         let new_game = Game::new(old_player, new_player);
                         waiting_player = None;

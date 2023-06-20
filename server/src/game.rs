@@ -1,5 +1,8 @@
+use std::net::SocketAddr;
+
 use crate::session::{self, Player};
 use async_std::{channel, task};
+use log::info;
 use shared::{AllyBoard, AllyField, EnemyBoard, EnemyField};
 use uuid::Uuid;
 
@@ -28,6 +31,12 @@ impl Game {
     }
 }
 
+#[derive(Debug)]
+enum GameResult {
+    Win(SocketAddr),
+    Error,
+}
+
 pub struct Message {
     pub player_id: Uuid,
     pub content: MessageContent,
@@ -39,11 +48,16 @@ pub enum MessageContent {
 }
 
 pub fn start_game(mut game: Game) {
-    println!("Starting game");
+    info!(
+        "Starting game between {} and {}",
+        game.player_1.address, game.player_2.address
+    );
 
     let (tx, rx) = channel::unbounded();
 
     task::spawn(async move {
+        let mut game_result = GameResult::Error;
+
         let tx1 = tx.clone();
         let tx2 = tx.clone();
         game.player_1
@@ -107,6 +121,8 @@ pub fn start_game(mut game: Game) {
                                 shared::DisconnectReason::Defeat,
                             ))
                             .ok();
+
+                        game_result = GameResult::Win(current_player.address);
                         break;
                     }
 
@@ -118,6 +134,10 @@ pub fn start_game(mut game: Game) {
                 }
             }
         }
+        info!(
+            "Ending game between {} and {}, result: {:?}",
+            game.player_1.address, game.player_2.address, game_result
+        );
     });
 }
 

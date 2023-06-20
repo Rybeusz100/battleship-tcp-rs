@@ -2,6 +2,7 @@ use crate::session::handle_client;
 use async_std::prelude::*;
 use async_std::{net::TcpListener, task};
 use dotenv::dotenv;
+use log::warn;
 use manager::start_manager;
 use multicast_discovery::start_multicast_discovery;
 use std::sync::atomic::{AtomicU32, Ordering};
@@ -44,7 +45,7 @@ async fn run_server() -> io::Result<()> {
         if CONNECTIONS_COUNT.load(Ordering::SeqCst) < max_connections {
             handle_client(stream, manager_tx.clone());
         } else {
-            println!("Connection limit reached");
+            warn!("Connection limit reached");
         }
     }
 
@@ -53,6 +54,7 @@ async fn run_server() -> io::Result<()> {
 
 fn main() -> io::Result<()> {
     dotenv().ok();
+    pretty_env_logger::init();
 
     #[cfg(all(target_os = "linux", feature = "daemonize"))]
     {
