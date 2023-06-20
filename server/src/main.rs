@@ -7,6 +7,9 @@ use multicast_discovery::start_multicast_discovery;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::{env, io, net::SocketAddrV4};
 
+#[cfg(all(target_os = "linux", feature = "daemonize"))]
+use {daemonize::Daemonize, std::fs::File};
+
 mod game;
 mod manager;
 mod multicast_discovery;
@@ -50,6 +53,18 @@ async fn run_server() -> io::Result<()> {
 
 fn main() -> io::Result<()> {
     dotenv().ok();
+
+    #[cfg(all(target_os = "linux", feature = "daemonize"))]
+    {
+        let stdout = File::create("/tmp/battleship.out").unwrap();
+        let stderr = File::create("/tmp/battleship.err").unwrap();
+
+        Daemonize::new()
+            .stdout(stdout)
+            .stderr(stderr)
+            .start()
+            .unwrap();
+    }
 
     task::block_on(async {
         run_server().await?;
