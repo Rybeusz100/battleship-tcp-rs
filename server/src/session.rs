@@ -9,7 +9,7 @@ use async_std::{
 };
 use async_stream::stream;
 use futures::{future::Either, pin_mut, stream::select, StreamExt};
-use log::{debug, info};
+use log::info;
 use shared::{
     receive_message, send_message, AllyBoard, ClientBoard, ClientToServer, DisconnectReason,
     EnemyBoard, ServerToClient,
@@ -47,7 +47,7 @@ pub fn handle_client(mut stream: TcpStream, manager_tx: Sender<manager::Message>
     };
 
     task::spawn(async move {
-        debug!("{} connected", peer_addr);
+        info!("{} connected", peer_addr);
         CONNECTIONS_COUNT.fetch_add(1, Ordering::SeqCst);
         let mut state = ClientState::Connected;
         let player_id = Uuid::new_v4();

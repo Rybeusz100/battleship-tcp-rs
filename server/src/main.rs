@@ -73,7 +73,7 @@ fn main() -> io::Result<()> {
 
         let logger = syslog::unix(formatter).unwrap();
         log::set_boxed_logger(Box::new(BasicLogger::new(logger)))
-            .map(|()| log::set_max_level(log::LevelFilter::Info))
+            .map(|()| log::set_max_level(log::LevelFilter::Debug))
             .unwrap();
 
         let stdout = File::create("/tmp/battleship.out").unwrap();
